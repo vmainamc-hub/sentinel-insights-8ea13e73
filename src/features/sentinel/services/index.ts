@@ -6,7 +6,12 @@
  */
 import type { SentinelServices } from "./interfaces";
 import { mockMarketDataService } from "./mock/marketDataService";
-import { mockAccountService, mockContractService, mockPortfolio, mockProposalService } from "./mock/tradingServices";
+import {
+  mockAccountService,
+  mockContractService,
+  mockPortfolio,
+  mockProposalService,
+} from "./mock/tradingServices";
 import { digitAnalysisService } from "../engine/digitAnalysis";
 import { analysisService } from "../engine/analysis";
 
@@ -23,7 +28,8 @@ export const services: SentinelServices = {
 
 /** Prototype-only handles (demo scenario switching, stream fan-out). */
 export const prototypeControls = {
-  setScenario: (s: Parameters<typeof mockMarketDataService.setScenario>[0]) => mockMarketDataService.setScenario(s),
+  setScenario: (s: Parameters<typeof mockMarketDataService.setScenario>[0]) =>
+    mockMarketDataService.setScenario(s),
   peekQuote: (symbol: string) => mockMarketDataService.peekQuote(symbol),
   portfolioOnTick: mockPortfolio.onTick.bind(mockPortfolio),
 };

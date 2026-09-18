@@ -6,8 +6,24 @@
  * post-trade UI can be exercised. The live phase swaps these for Deriv
  * `proposal`, `buy`, `proposal_open_contract`, `sell`, `portfolio`, `balance`.
  */
-import type { Account, ContractAvailability, ContractConfig, Market, OpenContract, Proposal, Tick, TradeRecord } from "../../types";
-import type { AccountService, ContractService, OpenContractService, ProposalService, TradeService, Unsubscribe } from "../interfaces";
+import type {
+  Account,
+  ContractAvailability,
+  ContractConfig,
+  Market,
+  OpenContract,
+  Proposal,
+  Tick,
+  TradeRecord,
+} from "../../types";
+import type {
+  AccountService,
+  ContractService,
+  OpenContractService,
+  ProposalService,
+  TradeService,
+  Unsubscribe,
+} from "../interfaces";
 import { payoutMultiple } from "../../engine/analysis";
 import { MOCK_MARKETS, mockContractsFor } from "./catalogue";
 
@@ -20,7 +36,21 @@ export const mockContractService: ContractService = {
   },
 };
 
-export function contractLabel(config: Pick<ContractConfig, "contractType" | "barrier">) {
+export function contractLabel(
+  contractTypeOrConfig: ContractType | Pick<ContractConfig, "contractType" | "barrier">,
+  barrierArg?: number,
+): string {
+  let contractType: ContractType;
+  let barrier: number | undefined;
+
+  if (typeof contractTypeOrConfig === "object" && contractTypeOrConfig !== null) {
+    contractType = contractTypeOrConfig.contractType;
+    barrier = contractTypeOrConfig.barrier;
+  } else {
+    contractType = contractTypeOrConfig;
+    barrier = barrierArg;
+  }
+
   const names: Record<string, string> = {
     DIGITEVEN: "EVEN",
     DIGITODD: "ODD",
@@ -35,10 +65,13 @@ export function contractLabel(config: Pick<ContractConfig, "contractType" | "bar
     ONETOUCH: "TOUCH",
     NOTOUCH: "NO TOUCH",
   };
-  const base = names[config.contractType];
-  if (["DIGITMATCH", "DIGITDIFF", "DIGITOVER", "DIGITUNDER"].includes(config.contractType)) return `${base} ${config.barrier ?? "?"}`;
-  if (["HIGHER", "LOWER", "ONETOUCH", "NOTOUCH"].includes(config.contractType))
-    return `${base} ${config.barrier !== undefined ? (config.barrier >= 0 ? "+" : "") + config.barrier : ""}`.trim();
+  const base = names[contractType] ?? contractType ?? "CONTRACT";
+  if (["DIGITMATCH", "DIGITDIFF", "DIGITOVER", "DIGITUNDER"].includes(contractType)) {
+    return `${base} ${barrier ?? "?"}`;
+  }
+  if (["HIGHER", "LOWER", "ONETOUCH", "NOTOUCH"].includes(contractType)) {
+    return `${base} ${barrier !== undefined ? (barrier >= 0 ? "+" : "") + barrier : ""}`.trim();
+  }
   return base;
 }
 
@@ -46,19 +79,78 @@ let proposalSeq = 0;
 export const mockProposalService: ProposalService = {
   async getProposal(symbol, config, spot) {
     await wait(220);
-    const available: ContractAvailability[] = await mockContractService.getAvailableContracts(symbol);
+    const available: ContractAvailability[] =
+      await mockContractService.getAvailableContracts(symbol);
     const def = available.find((a) => a.contractType === config.contractType);
     const id = `proto-prop-${++proposalSeq}`;
     if (!def)
-      return { id, status: "UNAVAILABLE", source: "PROTOTYPE", config, askPrice: 0, payout: 0, potentialProfit: 0, spot, message: "Contract not offered on this market.", createdAt: Date.now() };
-    if (def.barrier === "digit" && (config.barrier === undefined || config.barrier < 0 || config.barrier > 9))
-      return { id, status: "ERROR", source: "PROTOTYPE", config, askPrice: 0, payout: 0, potentialProfit: 0, spot, message: "Select a digit.", createdAt: Date.now() };
+      return {
+        id,
+        status: "UNAVAILABLE",
+        source: "PROTOTYPE",
+        config,
+        askPrice: 0,
+        payout: 0,
+        potentialProfit: 0,
+        spot,
+        message: "Contract not offered on this market.",
+        createdAt: Date.now(),
+      };
+    if (
+      def.barrier === "digit" &&
+      (config.barrier === undefined || config.barrier < 0 || config.barrier > 9)
+    )
+      return {
+        id,
+        status: "ERROR",
+        source: "PROTOTYPE",
+        config,
+        askPrice: 0,
+        payout: 0,
+        potentialProfit: 0,
+        spot,
+        message: "Select a digit.",
+        createdAt: Date.now(),
+      };
     if (config.contractType === "DIGITOVER" && config.barrier === 9)
-      return { id, status: "UNAVAILABLE", source: "PROTOTYPE", config, askPrice: 0, payout: 0, potentialProfit: 0, spot, message: "Over 9 cannot win.", createdAt: Date.now() };
+      return {
+        id,
+        status: "UNAVAILABLE",
+        source: "PROTOTYPE",
+        config,
+        askPrice: 0,
+        payout: 0,
+        potentialProfit: 0,
+        spot,
+        message: "Over 9 cannot win.",
+        createdAt: Date.now(),
+      };
     if (config.contractType === "DIGITUNDER" && config.barrier === 0)
-      return { id, status: "UNAVAILABLE", source: "PROTOTYPE", config, askPrice: 0, payout: 0, potentialProfit: 0, spot, message: "Under 0 cannot win.", createdAt: Date.now() };
+      return {
+        id,
+        status: "UNAVAILABLE",
+        source: "PROTOTYPE",
+        config,
+        askPrice: 0,
+        payout: 0,
+        potentialProfit: 0,
+        spot,
+        message: "Under 0 cannot win.",
+        createdAt: Date.now(),
+      };
     if (!(config.stake > 0))
-      return { id, status: "ERROR", source: "PROTOTYPE", config, askPrice: 0, payout: 0, potentialProfit: 0, spot, message: "Stake must be positive.", createdAt: Date.now() };
+      return {
+        id,
+        status: "ERROR",
+        source: "PROTOTYPE",
+        config,
+        askPrice: 0,
+        payout: 0,
+        potentialProfit: 0,
+        spot,
+        message: "Stake must be positive.",
+        createdAt: Date.now(),
+      };
     const mult = payoutMultiple(config.contractType, config.barrier);
     const payout = Number((config.stake * mult).toFixed(2));
     return {
@@ -96,7 +188,10 @@ class MockPortfolio implements TradeService, OpenContractService {
     await wait(300);
     if (proposal.status !== "READY") throw new Error("Proposal is not ready.");
     const cfg = proposal.config;
-    const ticks = cfg.durationUnit === "t" ? cfg.duration : Math.max(5, Math.round(cfg.duration / market.tick_interval_seconds));
+    const ticks =
+      cfg.durationUnit === "t"
+        ? cfg.duration
+        : Math.max(5, Math.round(cfg.duration / market.tick_interval_seconds));
     const id = `PROTO-${++this.seq}`;
     const oc: OpenContract = {
       contractId: id,
@@ -115,7 +210,11 @@ class MockPortfolio implements TradeService, OpenContractService {
       ticksElapsed: 0,
       purchaseTime: Date.now(),
       expiryTime: Date.now() + ticks * market.tick_interval_seconds * 1000,
-      isSellable: cfg.contractType === "RISE" || cfg.contractType === "FALL" || cfg.contractType === "HIGHER" || cfg.contractType === "LOWER",
+      isSellable:
+        cfg.contractType === "RISE" ||
+        cfg.contractType === "FALL" ||
+        cfg.contractType === "HIGHER" ||
+        cfg.contractType === "LOWER",
       source: "PROTOTYPE",
     };
     this.configs.set(id, cfg);
@@ -163,8 +262,11 @@ class MockPortfolio implements TradeService, OpenContractService {
       oc.ticksElapsed += 1;
       oc.currentSpot = tick.quote;
       const cfg = this.configs.get(oc.contractId)!;
-      const payout = Number((oc.buyPrice * payoutMultiple(cfg.contractType, cfg.barrier)).toFixed(2));
-      const barrierPrice = oc.entrySpot + (cfg.barrier ?? 0) * Math.pow(10, -market.pip_decimals) * 10;
+      const payout = Number(
+        (oc.buyPrice * payoutMultiple(cfg.contractType, cfg.barrier)).toFixed(2),
+      );
+      const barrierPrice =
+        oc.entrySpot + (cfg.barrier ?? 0) * Math.pow(10, -market.pip_decimals) * 10;
       if (cfg.contractType === "ONETOUCH" || cfg.contractType === "NOTOUCH") {
         const hit = cfg.barrier! >= 0 ? tick.quote >= barrierPrice : tick.quote <= barrierPrice;
         if (hit) this.touched.set(oc.contractId, true);
@@ -173,23 +275,42 @@ class MockPortfolio implements TradeService, OpenContractService {
         const d = tick.lastDigit;
         const b = cfg.barrier ?? 0;
         switch (cfg.contractType) {
-          case "DIGITEVEN": return d % 2 === 0;
-          case "DIGITODD": return d % 2 === 1;
-          case "DIGITMATCH": return d === b;
-          case "DIGITDIFF": return d !== b;
-          case "DIGITOVER": return d > b;
-          case "DIGITUNDER": return d < b;
-          case "RISE": return tick.quote > oc.entrySpot;
-          case "FALL": return tick.quote < oc.entrySpot;
-          case "HIGHER": return tick.quote > barrierPrice;
-          case "LOWER": return tick.quote < barrierPrice;
-          case "ONETOUCH": return !!this.touched.get(oc.contractId);
-          case "NOTOUCH": return !this.touched.get(oc.contractId);
+          case "DIGITEVEN":
+            return d % 2 === 0;
+          case "DIGITODD":
+            return d % 2 === 1;
+          case "DIGITMATCH":
+            return d === b;
+          case "DIGITDIFF":
+            return d !== b;
+          case "DIGITOVER":
+            return d > b;
+          case "DIGITUNDER":
+            return d < b;
+          case "RISE":
+            return tick.quote > oc.entrySpot;
+          case "FALL":
+            return tick.quote < oc.entrySpot;
+          case "HIGHER":
+            return tick.quote > barrierPrice;
+          case "LOWER":
+            return tick.quote < barrierPrice;
+          case "ONETOUCH":
+            return !!this.touched.get(oc.contractId);
+          case "NOTOUCH":
+            return !this.touched.get(oc.contractId);
         }
       })();
       // indicative mark-to-market for the prototype
       const progress = oc.ticksElapsed / oc.ticksTotal;
-      oc.currentValue = Number((oc.isSellable ? oc.buyPrice * (winning ? 1 + progress * 0.6 : 1 - progress * 0.7) : winning ? payout * (0.4 + 0.6 * progress) : oc.buyPrice * (1 - progress)).toFixed(2));
+      oc.currentValue = Number(
+        (oc.isSellable
+          ? oc.buyPrice * (winning ? 1 + progress * 0.6 : 1 - progress * 0.7)
+          : winning
+            ? payout * (0.4 + 0.6 * progress)
+            : oc.buyPrice * (1 - progress)
+        ).toFixed(2),
+      );
       oc.profit = Number((oc.currentValue - oc.buyPrice).toFixed(2));
       if (cfg.contractType === "ONETOUCH" && winning) {
         this.close(oc, "WON", payout);
@@ -215,7 +336,17 @@ class MockPortfolio implements TradeService, OpenContractService {
 
 function seedHistory(): TradeRecord[] {
   const now = Date.now();
-  const rows: [number, string, string, string, number, number, number, number, TradeRecord["status"]][] = [
+  const rows: [
+    number,
+    string,
+    string,
+    string,
+    number,
+    number,
+    number,
+    number,
+    TradeRecord["status"],
+  ][] = [
     [4, "1HZ10V", "Volatility 10 (1s) Index", "UNDER 3", 9016.44, 9016.52, 10, 9.51, "WON"],
     [11, "R_25", "Volatility 25 Index", "DIFFERS 7", 2583.204, 2583.191, 25, 1.35, "WON"],
     [19, "R_10", "Volatility 10 Index", "EVEN", 6312.417, 6312.4, 10, -10, "LOST"],
@@ -231,7 +362,19 @@ function seedHistory(): TradeRecord[] {
     underlying_symbol: sym,
     marketName: name,
     label,
-    contractType: label.startsWith("UNDER") ? "DIGITUNDER" : label.startsWith("OVER") ? "DIGITOVER" : label.startsWith("DIFFERS") ? "DIGITDIFF" : label.startsWith("MATCHES") ? "DIGITMATCH" : label === "EVEN" ? "DIGITEVEN" : label === "ODD" ? "DIGITODD" : "RISE",
+    contractType: label.startsWith("UNDER")
+      ? "DIGITUNDER"
+      : label.startsWith("OVER")
+        ? "DIGITOVER"
+        : label.startsWith("DIFFERS")
+          ? "DIGITDIFF"
+          : label.startsWith("MATCHES")
+            ? "DIGITMATCH"
+            : label === "EVEN"
+              ? "DIGITEVEN"
+              : label === "ODD"
+                ? "DIGITODD"
+                : "RISE",
     entrySpot: entry,
     exitSpot: exit,
     stake,
@@ -246,6 +389,12 @@ export const mockPortfolio = new MockPortfolio();
 
 export const mockAccountService: AccountService = {
   async getAccount(): Promise<Account> {
-    return { loginid: "NOT CONNECTED", currency: "USD", balance: null, kind: "PROTOTYPE", label: "Prototype · no account linked" };
+    return {
+      loginid: "NOT CONNECTED",
+      currency: "USD",
+      balance: null,
+      kind: "PROTOTYPE",
+      label: "Prototype · no account linked",
+    };
   },
 };

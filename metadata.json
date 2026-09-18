@@ -1,0 +1,6 @@
+{
+  "name": "Sentinel DTrader",
+  "description": "Live execution and market intelligence cockpit for Deriv synthetic and volatility indices featuring real-time digit intelligence, market dossiers, and contract qualification.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

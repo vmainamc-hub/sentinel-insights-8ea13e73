@@ -65,7 +65,10 @@ export function computeWindow(all: Tick[], window: DigitWindow): WindowStats {
   }
 
   const sorted = [...digits].sort((a, b) => b.pct - a.pct);
-  const hot = sorted.filter((d) => d.pct >= 0.115).slice(0, 2).map((d) => d.digit);
+  const hot = sorted
+    .filter((d) => d.pct >= 0.115)
+    .slice(0, 2)
+    .map((d) => d.digit);
   const cold = [...sorted]
     .reverse()
     .filter((d) => d.pct <= 0.085)

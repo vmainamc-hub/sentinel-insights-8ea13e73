@@ -20,22 +20,27 @@ export function hashString(s: string) {
 }
 
 export function lastDigitOf(quote: number, decimals: number) {
+  if (typeof quote !== "number" || isNaN(quote)) return 0;
   return Number(quote.toFixed(decimals).slice(-1));
 }
 
 export function fmtQuote(q: number, decimals: number) {
+  if (typeof q !== "number" || isNaN(q)) return "—";
   return q.toFixed(decimals);
 }
 
 export function fmtPct(v: number, digits = 1) {
+  if (typeof v !== "number" || isNaN(v)) return "0.0%";
   return `${(v * 100).toFixed(digits)}%`;
 }
 
 export function fmtSigned(v: number, digits = 1) {
+  if (typeof v !== "number" || isNaN(v)) return "+0.0";
   return `${v > 0 ? "+" : ""}${v.toFixed(digits)}`;
 }
 
 export function fmtMoney(v: number, currency = "USD") {
+  if (typeof v !== "number" || isNaN(v)) return `0.00 ${currency}`;
   return `${v < 0 ? "-" : ""}${Math.abs(v).toFixed(2)} ${currency}`;
 }
 

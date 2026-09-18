@@ -70,8 +70,11 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
 
-  --shadow-panel: 0 1px 0 0 color-mix(in oklab, white 4%, transparent) inset, 0 8px 24px -16px oklch(0 0 0 / 0.8);
-  --shadow-glow-primary: 0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent), 0 0 24px -6px color-mix(in oklab, var(--primary) 45%, transparent);
+  --shadow-panel:
+    0 1px 0 0 color-mix(in oklab, white 4%, transparent) inset, 0 8px 24px -16px oklch(0 0 0 / 0.8);
+  --shadow-glow-primary:
+    0 0 0 1px color-mix(in oklab, var(--primary) 35%, transparent),
+    0 0 24px -6px color-mix(in oklab, var(--primary) 45%, transparent);
   --animate-tick: tick-flash 700ms ease-out;
   --animate-fade-up: fade-up 300ms ease-out both;
   --animate-pulse-dot: pulse-dot 1.6s ease-in-out infinite;
@@ -214,5 +217,10 @@
   background-size: 48px 48px;
 }
 @utility scan-line {
-  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--primary) 60%, transparent), transparent);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, var(--primary) 60%, transparent),
+    transparent
+  );
 }

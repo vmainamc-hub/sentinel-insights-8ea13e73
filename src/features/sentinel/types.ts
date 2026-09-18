@@ -269,7 +269,12 @@ export interface AnalysisSnapshot {
   tickCount: number;
   windowStats: Record<DigitWindow, WindowStats>;
   digitStats: DigitStat[]; // active window
-  parityStats: { evenPct: number; oddPct: number; bias: "EVEN" | "ODD" | "NEUTRAL"; strength: number };
+  parityStats: {
+    evenPct: number;
+    oddPct: number;
+    bias: "EVEN" | "ODD" | "NEUTRAL";
+    strength: number;
+  };
   pressure: { direction: Direction; strength: number; label: string };
   momentum: { value: number; label: string };
   psychology: { label: string; detail: string };
@@ -294,9 +299,21 @@ export interface AnalysisSnapshot {
 export type DemoScenario = "A" | "B" | "C" | "D" | "E";
 
 export const DEMO_SCENARIOS: { id: DemoScenario; label: string; detail: string }[] = [
-  { id: "A", label: "State A · Qualified", detail: "Strong, window-consistent evidence yields a qualified contract." },
-  { id: "B", label: "State B · Conflict", detail: "Short and long windows disagree; conflicts are exposed." },
-  { id: "C", label: "State C · Insufficient", detail: "Too few ticks to analyse; engine refuses to qualify." },
+  {
+    id: "A",
+    label: "State A · Qualified",
+    detail: "Strong, window-consistent evidence yields a qualified contract.",
+  },
+  {
+    id: "B",
+    label: "State B · Conflict",
+    detail: "Short and long windows disagree; conflicts are exposed.",
+  },
+  {
+    id: "C",
+    label: "State C · Insufficient",
+    detail: "Too few ticks to analyse; engine refuses to qualify.",
+  },
   { id: "D", label: "State D · Feed stale", detail: "Stream stops; Sentinel flags a stale feed." },
   { id: "E", label: "State E · No qualification", detail: "Balanced market; nothing qualifies." },
 ];

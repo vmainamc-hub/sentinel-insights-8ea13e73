@@ -42,20 +42,51 @@ interface Rule {
 function digitRules(available: ContractAvailability[]): Rule[] {
   const has = (ct: ContractType) => available.some((a) => a.contractType === ct);
   const rules: Rule[] = [];
-  if (has("DIGITEVEN")) rules.push({ contractType: "DIGITEVEN", label: "EVEN", baseline: 0.5, wins: (d) => d % 2 === 0 });
-  if (has("DIGITODD")) rules.push({ contractType: "DIGITODD", label: "ODD", baseline: 0.5, wins: (d) => d % 2 === 1 });
+  if (has("DIGITEVEN"))
+    rules.push({
+      contractType: "DIGITEVEN",
+      label: "EVEN",
+      baseline: 0.5,
+      wins: (d) => d % 2 === 0,
+    });
+  if (has("DIGITODD"))
+    rules.push({ contractType: "DIGITODD", label: "ODD", baseline: 0.5, wins: (d) => d % 2 === 1 });
   if (has("DIGITOVER"))
     for (let b = 0; b <= 8; b++)
-      rules.push({ contractType: "DIGITOVER", barrier: b, label: `OVER ${b}`, baseline: (9 - b) / 10, wins: (d) => d > b });
+      rules.push({
+        contractType: "DIGITOVER",
+        barrier: b,
+        label: `OVER ${b}`,
+        baseline: (9 - b) / 10,
+        wins: (d) => d > b,
+      });
   if (has("DIGITUNDER"))
     for (let b = 9; b >= 1; b--)
-      rules.push({ contractType: "DIGITUNDER", barrier: b, label: `UNDER ${b}`, baseline: b / 10, wins: (d) => d < b });
+      rules.push({
+        contractType: "DIGITUNDER",
+        barrier: b,
+        label: `UNDER ${b}`,
+        baseline: b / 10,
+        wins: (d) => d < b,
+      });
   if (has("DIGITMATCH"))
     for (let b = 0; b <= 9; b++)
-      rules.push({ contractType: "DIGITMATCH", barrier: b, label: `MATCHES ${b}`, baseline: 0.1, wins: (d) => d === b });
+      rules.push({
+        contractType: "DIGITMATCH",
+        barrier: b,
+        label: `MATCHES ${b}`,
+        baseline: 0.1,
+        wins: (d) => d === b,
+      });
   if (has("DIGITDIFF"))
     for (let b = 0; b <= 9; b++)
-      rules.push({ contractType: "DIGITDIFF", barrier: b, label: `DIFFERS ${b}`, baseline: 0.9, wins: (d) => d !== b });
+      rules.push({
+        contractType: "DIGITDIFF",
+        barrier: b,
+        label: `DIFFERS ${b}`,
+        baseline: 0.9,
+        wins: (d) => d !== b,
+      });
   return rules;
 }
 
@@ -99,14 +130,17 @@ function ruleRegimeCompat(rule: Rule, regime: Regime, ws: WindowStats): Verdict 
   const ct = rule.contractType;
   if (regime === "ANOMALOUS") return "opposing";
   if (regime === "TRANSITION") return "neutral";
-  if (regime === "EVEN PRESSURE") return ct === "DIGITEVEN" ? "supportive" : ct === "DIGITODD" ? "opposing" : "neutral";
-  if (regime === "ODD PRESSURE") return ct === "DIGITODD" ? "supportive" : ct === "DIGITEVEN" ? "opposing" : "neutral";
+  if (regime === "EVEN PRESSURE")
+    return ct === "DIGITEVEN" ? "supportive" : ct === "DIGITODD" ? "opposing" : "neutral";
+  if (regime === "ODD PRESSURE")
+    return ct === "DIGITODD" ? "supportive" : ct === "DIGITEVEN" ? "opposing" : "neutral";
   if (regime === "DIGIT CONCENTRATION") {
     if (ct === "DIGITMATCH") return ws.hot.includes(rule.barrier!) ? "supportive" : "opposing";
     if (ct === "DIGITDIFF") return ws.hot.includes(rule.barrier!) ? "opposing" : "neutral";
     return "neutral";
   }
-  if (regime === "DIGIT DISPERSION") return ct === "DIGITMATCH" ? "opposing" : ct === "DIGITDIFF" ? "supportive" : "neutral";
+  if (regime === "DIGIT DISPERSION")
+    return ct === "DIGITMATCH" ? "opposing" : ct === "DIGITDIFF" ? "supportive" : "neutral";
   return "neutral";
 }
 
@@ -130,7 +164,8 @@ function stateOf(
   if (windowsS && windowsO) conflict = "HIGH";
   else if (S && O) conflict = "MEDIUM";
 
-  if (conflict === "HIGH" || (conflict === "MEDIUM" && S >= 2)) return { state: "CONFLICT", conflict };
+  if (conflict === "HIGH" || (conflict === "MEDIUM" && S >= 2))
+    return { state: "CONFLICT", conflict };
   if (windowsS >= 2 && O === 0 && edge100 >= EDGE && threat !== "HIGH" && feed === "LIVE")
     return { state: "QUALIFIED", conflict };
   if (S >= 1 && O === 0) return { state: "WATCH", conflict };
@@ -154,10 +189,9 @@ export function analyse(input: {
   available: ContractAvailability[];
 }): AnalysisSnapshot {
   const { market, ticks, feedStatus, activeWindow, available } = input;
-  const windowStats = Object.fromEntries(DIGIT_WINDOWS.map((w) => [w, computeWindow(ticks, w)])) as Record<
-    DigitWindow,
-    WindowStats
-  >;
+  const windowStats = Object.fromEntries(
+    DIGIT_WINDOWS.map((w) => [w, computeWindow(ticks, w)]),
+  ) as Record<DigitWindow, WindowStats>;
   const w20 = windowStats[20];
   const w100 = windowStats[100];
   const w500 = windowStats[500];
@@ -182,7 +216,9 @@ export function analyse(input: {
   const pressureStrength = recent.length > 1 ? Math.abs(ups - downs) / (recent.length - 1) : 0;
   const pressureDir: Direction = pressureStrength < 0.15 ? "flat" : ups > downs ? "up" : "down";
   const momentumBp =
-    recent.length > 1 ? ((recent[recent.length - 1].quote - recent[0].quote) / recent[0].quote) * 10000 : 0;
+    recent.length > 1
+      ? ((recent[recent.length - 1].quote - recent[0].quote) / recent[0].quote) * 10000
+      : 0;
 
   // anomaly
   const streak = w20.streak;
@@ -204,7 +240,10 @@ export function analyse(input: {
   let regime: Regime = "UNKNOWN";
   if (sufficient) {
     if (anomaly.detected) regime = "ANOMALOUS";
-    else if (Math.sign(parityShort) !== Math.sign(parityLong) && Math.abs(parityShort - parityLong) > 0.12)
+    else if (
+      Math.sign(parityShort) !== Math.sign(parityLong) &&
+      Math.abs(parityShort - parityLong) > 0.12
+    )
       regime = "TRANSITION";
     else if (parityBias === "EVEN" && Math.abs(parityDelta) > 0.06) regime = "EVEN PRESSURE";
     else if (parityBias === "ODD" && Math.abs(parityDelta) > 0.06) regime = "ODD PRESSURE";
@@ -214,8 +253,15 @@ export function analyse(input: {
   }
 
   // losing-digit threat: digits heating fast in the short window
-  const threatDigits = w20.digits.filter((d) => d.momentum >= 6 && d.pct >= 0.15).map((d) => d.digit);
-  const threatLevel = threatDigits.length >= 2 || (streak?.length ?? 0) >= 3 ? "HIGH" : threatDigits.length ? "MEDIUM" : "LOW";
+  const threatDigits = w20.digits
+    .filter((d) => d.momentum >= 6 && d.pct >= 0.15)
+    .map((d) => d.digit);
+  const threatLevel =
+    threatDigits.length >= 2 || (streak?.length ?? 0) >= 3
+      ? "HIGH"
+      : threatDigits.length
+        ? "MEDIUM"
+        : "LOW";
   const threat = {
     digits: threatDigits,
     level: threatLevel as "LOW" | "MEDIUM" | "HIGH",
@@ -232,7 +278,14 @@ export function analyse(input: {
   if (anomaly.detected) quality -= 0.15;
   if (regime === "TRANSITION") quality -= 0.1;
   quality = Math.max(0, Math.min(1, quality));
-  const qualityLabel = quality >= 0.8 ? "STRUCTURED" : quality >= 0.55 ? "USABLE" : quality >= 0.3 ? "DEGRADED" : "UNRELIABLE";
+  const qualityLabel =
+    quality >= 0.8
+      ? "STRUCTURED"
+      : quality >= 0.55
+        ? "USABLE"
+        : quality >= 0.3
+          ? "DEGRADED"
+          : "UNRELIABLE";
 
   // candidates
   const rules = digitRules(available);
@@ -250,9 +303,7 @@ export function analyse(input: {
     const pressureV = verdictFromEdge(pressureEdge, n >= 40);
     const regimeV = ruleRegimeCompat(rule, regime, active);
     const affected =
-      rule.contractType === "DIGITMATCH"
-        ? false
-        : threat.digits.some((d) => !rule.wins(d));
+      rule.contractType === "DIGITMATCH" ? false : threat.digits.some((d) => !rule.wins(d));
     const cThreat: "LOW" | "MEDIUM" | "HIGH" = affected ? threat.level : "LOW";
     const parityV: Verdict =
       rule.contractType === "DIGITEVEN"
@@ -268,21 +319,59 @@ export function analyse(input: {
               ? "opposing"
               : "neutral"
           : "neutral";
-    const { state, conflict } = stateOf({ s20, s100, s500 }, pressureV, regimeV, cThreat, e100, qualifiable, feedStatus);
+    const { state, conflict } = stateOf(
+      { s20, s100, s500 },
+      pressureV,
+      regimeV,
+      cThreat,
+      e100,
+      qualifiable,
+      feedStatus,
+    );
 
     const fmt = (f: number, e: number, known: boolean) =>
-      known ? `${(f * 100).toFixed(1)}% vs ${(rule.baseline * 100).toFixed(0)}% base (${e >= 0 ? "+" : ""}${(e * 100).toFixed(1)})` : "insufficient sample";
+      known
+        ? `${(f * 100).toFixed(1)}% vs ${(rule.baseline * 100).toFixed(0)}% base (${e >= 0 ? "+" : ""}${(e * 100).toFixed(1)})`
+        : "insufficient sample";
     const evidence: EvidenceRow[] = [
       { label: "20-tick distribution", verdict: s20, detail: fmt(f20, e20, n >= 20) },
       { label: "100-tick distribution", verdict: s100, detail: fmt(f100, e100, n >= 100) },
       { label: "500-tick distribution", verdict: s500, detail: fmt(f500, e500, n >= 500) },
-      { label: "recent pressure", verdict: pressureV, detail: n >= 40 ? `20t minus 100t: ${(pressureEdge * 100).toFixed(1)} pts` : "insufficient sample" },
-      { label: "parity", verdict: parityV, detail: `${(evenPct * 100).toFixed(1)}% even in ${activeWindow}-tick window` },
+      {
+        label: "recent pressure",
+        verdict: pressureV,
+        detail:
+          n >= 40
+            ? `20t minus 100t: ${(pressureEdge * 100).toFixed(1)} pts`
+            : "insufficient sample",
+      },
+      {
+        label: "parity",
+        verdict: parityV,
+        detail: `${(evenPct * 100).toFixed(1)}% even in ${activeWindow}-tick window`,
+      },
       { label: "regime", verdict: regimeV, detail: regime },
-      { label: "anomaly", verdict: anomaly.detected ? "opposing" : "neutral", detail: anomaly.detected ? anomaly.detail : "none detected" },
-      { label: "losing-digit threat", verdict: cThreat === "HIGH" ? "opposing" : cThreat === "MEDIUM" ? "neutral" : "supportive", detail: affected ? threat.detail : "no threatened digit breaks this contract" },
-      { label: "contract conflict", verdict: conflict === "HIGH" ? "opposing" : conflict === "MEDIUM" ? "neutral" : "supportive", detail: conflict.toLowerCase() },
-      { label: "data quality", verdict: qualifiable && feedStatus === "LIVE" ? "supportive" : "opposing", detail: `${n} ticks · feed ${feedStatus}` },
+      {
+        label: "anomaly",
+        verdict: anomaly.detected ? "opposing" : "neutral",
+        detail: anomaly.detected ? anomaly.detail : "none detected",
+      },
+      {
+        label: "losing-digit threat",
+        verdict: cThreat === "HIGH" ? "opposing" : cThreat === "MEDIUM" ? "neutral" : "supportive",
+        detail: affected ? threat.detail : "no threatened digit breaks this contract",
+      },
+      {
+        label: "contract conflict",
+        verdict:
+          conflict === "HIGH" ? "opposing" : conflict === "MEDIUM" ? "neutral" : "supportive",
+        detail: conflict.toLowerCase(),
+      },
+      {
+        label: "data quality",
+        verdict: qualifiable && feedStatus === "LIVE" ? "supportive" : "opposing",
+        detail: `${n} ticks · feed ${feedStatus}`,
+      },
     ];
 
     const lastWin = [...ticks].reverse().findIndex((t) => rule.wins(t.lastDigit));
@@ -333,26 +422,43 @@ export function analyse(input: {
 
   const conflicts: string[] = [];
   const conflictCount = candidates.filter((c) => c.state === "CONFLICT").length;
-  if (conflictCount) conflicts.push(`${conflictCount} contract${conflictCount > 1 ? "s" : ""} show window disagreement (short vs long history).`);
-  if (regime === "TRANSITION") conflicts.push("Parity is flipping between the 20-tick and long windows — regime in transition.");
+  if (conflictCount)
+    conflicts.push(
+      `${conflictCount} contract${conflictCount > 1 ? "s" : ""} show window disagreement (short vs long history).`,
+    );
+  if (regime === "TRANSITION")
+    conflicts.push(
+      "Parity is flipping between the 20-tick and long windows — regime in transition.",
+    );
   if (parityBias !== "NEUTRAL" && regime === "DIGIT CONCENTRATION")
     conflicts.push("Parity bias and digit concentration point at different contract families.");
   if (threat.level !== "LOW") conflicts.push(threat.detail);
 
   const reasons: string[] = [];
-  if (decision === "FEED STALE") reasons.push("No new ticks are arriving; analysis is frozen on the last known sample.");
-  if (decision === "BACKEND DEGRADED") reasons.push("Feed degraded — the engine will not qualify contracts on an unreliable stream.");
-  if (decision === "ANALYSIS LAG") reasons.push("Ticks are arriving late; short-window statistics may be behind the market.");
-  if (decision === "INSUFFICIENT DATA") reasons.push(`${n} ticks available; ${QUALIFY_SAMPLE} required before any contract can qualify.`);
+  if (decision === "FEED STALE")
+    reasons.push("No new ticks are arriving; analysis is frozen on the last known sample.");
+  if (decision === "BACKEND DEGRADED")
+    reasons.push("Feed degraded — the engine will not qualify contracts on an unreliable stream.");
+  if (decision === "ANALYSIS LAG")
+    reasons.push("Ticks are arriving late; short-window statistics may be behind the market.");
+  if (decision === "INSUFFICIENT DATA")
+    reasons.push(
+      `${n} ticks available; ${QUALIFY_SAMPLE} required before any contract can qualify.`,
+    );
   if (decision === "QUALIFIED CONTRACT" && qualifiedCandidate)
-    reasons.push(`${qualifiedCandidate.label}: ${qualifiedCandidate.evidence.filter((e) => e.verdict === "supportive").length}/${qualifiedCandidate.evidence.length} evidence rows supportive, none opposing.`);
+    reasons.push(
+      `${qualifiedCandidate.label}: ${qualifiedCandidate.evidence.filter((e) => e.verdict === "supportive").length}/${qualifiedCandidate.evidence.length} evidence rows supportive, none opposing.`,
+    );
   if (decision === "NO QUALIFIED CONTRACT")
     reasons.push(
       conflictCount
         ? "Candidates with support are contradicted by another window or signal."
         : "Distribution is close to uniform; no contract shows a persistent edge.",
     );
-  if (rules.length === 0) reasons.push("This market exposes no digit contracts; Sentinel evaluates direction contracts only.");
+  if (rules.length === 0)
+    reasons.push(
+      "This market exposes no digit contracts; Sentinel evaluates direction contracts only.",
+    );
 
   // digit intel
   const digitIntel: Record<number, DigitIntel> = {};
@@ -363,7 +469,8 @@ export function analyse(input: {
     const notes: string[] = [];
     if (s20.status === "HOT") notes.push("Hot in the current window.");
     if (s20.status === "COLD") notes.push("Cold in the current window.");
-    if (threat.digits.includes(d)) notes.push("Flagged as a losing-digit threat for contracts that lose on it.");
+    if (threat.digits.includes(d))
+      notes.push("Flagged as a losing-digit threat for contracts that lose on it.");
     if (s20.run >= 2) notes.push(`Currently running ${s20.run}× in a row.`);
     if (!notes.length) notes.push("Behaving within normal bounds.");
     digitIntel[d] = {
@@ -372,7 +479,14 @@ export function analyse(input: {
       stat100: w100.digits[d],
       stat500: w500.digits[d],
       threat: threat.digits.includes(d) ? threat.level : "LOW",
-      regimeCompat: regime === "DIGIT CONCENTRATION" ? (active.hot.includes(d) ? "supportive" : "neutral") : regime === "ANOMALOUS" ? "opposing" : "neutral",
+      regimeCompat:
+        regime === "DIGIT CONCENTRATION"
+          ? active.hot.includes(d)
+            ? "supportive"
+            : "neutral"
+          : regime === "ANOMALOUS"
+            ? "opposing"
+            : "neutral",
       matchesSuitability: m?.state ?? "NO QUALIFICATION",
       differsSuitability: df?.state ?? "NO QUALIFICATION",
       notes,
@@ -381,11 +495,24 @@ export function analyse(input: {
 
   const psychology = (() => {
     const long = w500.sample >= 100 ? w500 : w100;
-    if (!sufficient) return { label: "UNKNOWN", detail: "Behavioural read needs at least 20 ticks." };
-    if (long.concentration > 0.14) return { label: "CLUSTERING", detail: `Long window leans on digits ${long.hot.join(", ") || "—"}; structure persists beyond noise.` };
-    if (Math.abs(long.evenPct - 0.5) > 0.05) return { label: long.evenPct > 0.5 ? "EVEN LOADED" : "ODD LOADED", detail: `${(long.evenPct * 100).toFixed(1)}% even across ${long.sample} ticks.` };
-    if (regime === "TRANSITION") return { label: "REBALANCING", detail: "Recent ticks are unwinding the longer-window bias." };
-    return { label: "MEAN-REVERTING", detail: "Long window sits near uniform; deviations have been short-lived." };
+    if (!sufficient)
+      return { label: "UNKNOWN", detail: "Behavioural read needs at least 20 ticks." };
+    if (long.concentration > 0.14)
+      return {
+        label: "CLUSTERING",
+        detail: `Long window leans on digits ${long.hot.join(", ") || "—"}; structure persists beyond noise.`,
+      };
+    if (Math.abs(long.evenPct - 0.5) > 0.05)
+      return {
+        label: long.evenPct > 0.5 ? "EVEN LOADED" : "ODD LOADED",
+        detail: `${(long.evenPct * 100).toFixed(1)}% even across ${long.sample} ticks.`,
+      };
+    if (regime === "TRANSITION")
+      return { label: "REBALANCING", detail: "Recent ticks are unwinding the longer-window bias." };
+    return {
+      label: "MEAN-REVERTING",
+      detail: "Long window sits near uniform; deviations have been short-lived.",
+    };
   })();
 
   return {
@@ -395,11 +522,21 @@ export function analyse(input: {
     tickCount: n,
     windowStats,
     digitStats: active.digits,
-    parityStats: { evenPct, oddPct: 1 - evenPct, bias: parityBias, strength: Math.abs(parityDelta) },
+    parityStats: {
+      evenPct,
+      oddPct: 1 - evenPct,
+      bias: parityBias,
+      strength: Math.abs(parityDelta),
+    },
     pressure: {
       direction: pressureDir,
       strength: pressureStrength,
-      label: pressureDir === "flat" ? "BALANCED" : pressureDir === "up" ? `UPWARD ${ups}/${ups + downs}` : `DOWNWARD ${downs}/${ups + downs}`,
+      label:
+        pressureDir === "flat"
+          ? "BALANCED"
+          : pressureDir === "up"
+            ? `UPWARD ${ups}/${ups + downs}`
+            : `DOWNWARD ${downs}/${ups + downs}`,
     },
     momentum: {
       value: momentumBp,
@@ -419,7 +556,11 @@ export function analyse(input: {
       sufficient: qualifiable,
       sample: n,
       required: QUALIFY_SAMPLE,
-      detail: qualifiable ? "Sample meets qualification threshold." : sufficient ? "Enough for description, not for qualification." : "Below minimum analysis sample.",
+      detail: qualifiable
+        ? "Sample meets qualification threshold."
+        : sufficient
+          ? "Enough for description, not for qualification."
+          : "Below minimum analysis sample.",
     },
     feedStatus,
     digitIntel,

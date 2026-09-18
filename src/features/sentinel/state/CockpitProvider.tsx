@@ -5,7 +5,16 @@
  * feed status, contract availability, the AnalysisSnapshot, the current
  * contract configuration, proposal, open contracts, history and account.
  */
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { toast } from "sonner";
 import type {
   Account,
@@ -109,7 +118,10 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
   const [tradeSheetOpen, setTradeSheetOpen] = useState(false);
   const marketRef = useRef<Market | null>(null);
 
-  const market = useMemo(() => markets.find((m) => m.underlying_symbol === activeSymbol) ?? null, [markets, activeSymbol]);
+  const market = useMemo(
+    () => markets.find((m) => m.underlying_symbol === activeSymbol) ?? null,
+    [markets, activeSymbol],
+  );
   marketRef.current = market;
 
   // catalogue + account + history
@@ -128,7 +140,9 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     setTicks([]);
     setFeedStatus("CONNECTING");
-    services.contracts.getAvailableContracts(activeSymbol).then((a) => !cancelled && setAvailable(a));
+    services.contracts
+      .getAvailableContracts(activeSymbol)
+      .then((a) => !cancelled && setAvailable(a));
     services.marketData.getTicksHistory(activeSymbol, 1000).then((h) => !cancelled && setTicks(h));
     const unsub = services.marketData.subscribeTicks(
       activeSymbol,
@@ -154,7 +168,13 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
     if (!available.length) return;
     if (!available.some((a) => a.contractType === config.contractType)) {
       const first = available[0];
-      setConfig((c) => ({ ...c, contractType: first.contractType, barrier: first.barrier === "digit" ? 5 : first.barrier === "price" ? 1 : undefined, durationUnit: first.durations[0].unit, duration: first.durations[0].unit === "t" ? 5 : first.durations[0].min }));
+      setConfig((c) => ({
+        ...c,
+        contractType: first.contractType,
+        barrier: first.barrier === "digit" ? 5 : first.barrier === "price" ? 1 : undefined,
+        durationUnit: first.durations[0].unit,
+        duration: first.durations[0].unit === "t" ? 5 : first.durations[0].min,
+      }));
     }
   }, [available, config.contractType]);
 
@@ -162,7 +182,14 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
 
   const snapshot = useMemo<AnalysisSnapshot | null>(() => {
     if (!market) return null;
-    return services.analysis.analyse({ market, ticks, feedStatus, activeWindow: window, available, scenario });
+    return services.analysis.analyse({
+      market,
+      ticks,
+      feedStatus,
+      activeWindow: window,
+      available,
+      scenario,
+    });
   }, [market, ticks, feedStatus, window, available, scenario]);
 
   // proposal follows config + market (not every tick)
@@ -182,7 +209,7 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       clearTimeout(t);
     };
-  }, [activeSymbol, config, feedStatus === "CONNECTING"]);
+  }, [activeSymbol, config, feedStatus]);
 
   const selectMarket = useCallback((symbol: string) => {
     setActiveSymbol(symbol);
@@ -195,7 +222,8 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
     (symbol: string) => {
       setTabs((t) => {
         const next = t.filter((s) => s !== symbol);
-        if (symbol === activeSymbol && next.length) setActiveSymbol(next[Math.max(0, t.indexOf(symbol) - 1)]);
+        if (symbol === activeSymbol && next.length)
+          setActiveSymbol(next[Math.max(0, t.indexOf(symbol) - 1)]);
         return next.length ? next : t;
       });
     },
@@ -207,16 +235,43 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
     setScenarioState(s);
   }, []);
 
-  const updateConfig = useCallback((patch: Partial<ContractConfig>) => setConfig((c) => ({ ...c, ...patch })), []);
+  const updateConfig = useCallback(
+    (patch: Partial<ContractConfig>) => setConfig((c) => ({ ...c, ...patch })),
+    [],
+  );
 
   const selectContractType = useCallback(
     (ct: ContractType) => {
       const def = available.find((a) => a.contractType === ct);
       setConfig((c) => {
-        const sameKind = def?.barrier === (available.find((a) => a.contractType === c.contractType)?.barrier ?? "none");
-        const barrier = def?.barrier === "digit" ? (sameKind && c.barrier !== undefined ? c.barrier : 5) : def?.barrier === "price" ? (sameKind && c.barrier !== undefined ? c.barrier : 1) : undefined;
-        const unit = def?.durations.some((d) => d.unit === c.durationUnit) ? c.durationUnit : (def?.durations[0].unit ?? "t");
-        return { ...c, contractType: ct, barrier, durationUnit: unit, duration: unit === c.durationUnit ? c.duration : unit === "t" ? 5 : def?.durations.find((d) => d.unit === unit)?.min ?? 1 };
+        const sameKind =
+          def?.barrier ===
+          (available.find((a) => a.contractType === c.contractType)?.barrier ?? "none");
+        const barrier =
+          def?.barrier === "digit"
+            ? sameKind && c.barrier !== undefined
+              ? c.barrier
+              : 5
+            : def?.barrier === "price"
+              ? sameKind && c.barrier !== undefined
+                ? c.barrier
+                : 1
+              : undefined;
+        const unit = def?.durations.some((d) => d.unit === c.durationUnit)
+          ? c.durationUnit
+          : (def?.durations[0].unit ?? "t");
+        return {
+          ...c,
+          contractType: ct,
+          barrier,
+          durationUnit: unit,
+          duration:
+            unit === c.durationUnit
+              ? c.duration
+              : unit === "t"
+                ? 5
+                : (def?.durations.find((d) => d.unit === unit)?.min ?? 1),
+        };
       });
     },
     [available],
@@ -224,7 +279,13 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
 
   const applyCandidate = useCallback(
     (cand: Pick<ContractCandidate, "contractType" | "barrier">) => {
-      setConfig((c) => ({ ...c, contractType: cand.contractType, barrier: cand.barrier, durationUnit: "t", duration: c.durationUnit === "t" ? c.duration : 5 }));
+      setConfig((c) => ({
+        ...c,
+        contractType: cand.contractType,
+        barrier: cand.barrier,
+        durationUnit: "t",
+        duration: c.durationUnit === "t" ? c.duration : 5,
+      }));
     },
     [],
   );
@@ -234,7 +295,9 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
     setBuying(true);
     try {
       const oc = await services.trades.buy(activeSymbol, proposal, market);
-      toast("Prototype contract opened", { description: `${oc.label} on ${market.display_name} · ${oc.ticksTotal} ticks · no real trade placed.` });
+      toast("Prototype contract opened", {
+        description: `${oc.label} on ${market.display_name} · ${oc.ticksTotal} ticks · no real trade placed.`,
+      });
       setTradeSheetOpen(false);
     } catch (e) {
       toast.error((e as Error).message);
@@ -246,7 +309,9 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
   const sell = useCallback(async (id: string) => {
     try {
       const rec = await services.trades.sell(id);
-      toast("Prototype contract sold", { description: `${rec.label} closed at ${rec.profit >= 0 ? "+" : ""}${rec.profit.toFixed(2)} ${rec.status.toLowerCase()} · prototype only.` });
+      toast("Prototype contract sold", {
+        description: `${rec.label} closed at ${rec.profit >= 0 ? "+" : ""}${rec.profit.toFixed(2)} ${rec.status.toLowerCase()} · prototype only.`,
+      });
     } catch (e) {
       toast.error((e as Error).message);
     }

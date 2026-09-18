@@ -1034,7 +1034,6 @@ conflicts
 dataIntegrity
 feedStatus
 
-
 The UI should consume this object rather than independently inventing analysis values in multiple components.
 
 22. ONE MARKET STREAM
@@ -1146,22 +1145,21 @@ Desktop should feel like a professional command center.
 Suggested composition:
 
 ┌───────────────────────────────────────────────────────────────┐
-│ SENTINEL DTRADER     MARKET TABS       CONNECTION   ACCOUNT   │
+│ SENTINEL DTRADER MARKET TABS CONNECTION ACCOUNT │
 ├───────────────────────────────────────────────┬───────────────┤
-│                                               │               │
-│                 LIVE CHART                    │ CONTRACT      │
-│                                               │ TRADE DECK     │
-│                                               │               │
-├───────────────────────────────────────────────┤               │
-│ MARKET DOSSIER / SENTINEL INTELLIGENCE        │               │
+│ │ │
+│ LIVE CHART │ CONTRACT │
+│ │ TRADE DECK │
+│ │ │
+├───────────────────────────────────────────────┤ │
+│ MARKET DOSSIER / SENTINEL INTELLIGENCE │ │
 ├───────────────────────────────────────────────┴───────────────┤
-│                                                               │
-│             0–9 LIVE DIGIT INTELLIGENCE                       │
-│                                                               │
+│ │
+│ 0–9 LIVE DIGIT INTELLIGENCE │
+│ │
 ├───────────────────────────────────────────────────────────────┤
-│ CONTRACT LAB / OPEN CONTRACTS / HISTORY                      │
+│ CONTRACT LAB / OPEN CONTRACTS / HISTORY │
 └───────────────────────────────────────────────────────────────┘
-
 
 Adapt the exact layout intelligently rather than following this literally.
 

@@ -168,7 +168,11 @@ class MockMarketDataService implements MarketDataService {
     return s.ticks.slice(-count);
   }
 
-  subscribeTicks(symbol: string, onTick: (t: Tick) => void, onStatus: (s: FeedStatus) => void): Unsubscribe {
+  subscribeTicks(
+    symbol: string,
+    onTick: (t: Tick) => void,
+    onStatus: (s: FeedStatus) => void,
+  ): Unsubscribe {
     const s = this.stream(symbol);
     const scenario = this.scenario;
     onStatus("CONNECTING");
@@ -201,9 +205,10 @@ class MockMarketDataService implements MarketDataService {
   }
 
   /** Last quote for background tabs (no extra subscription is opened). */
-  peekQuote(symbol: string) {
+  peekQuote(symbol: string): number | undefined {
     const s = this.stream(symbol);
-    return s.ticks[s.ticks.length - 1];
+    const tick = s.ticks[s.ticks.length - 1];
+    return tick ? tick.quote : undefined;
   }
 }
 

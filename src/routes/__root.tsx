@@ -77,6 +77,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
+      { title: "Sentinel DTrader" },
+      {
+        name: "description",
+        content:
+          "Live execution and market intelligence cockpit for Deriv synthetic and volatility indices featuring real-time digit intelligence, market dossiers, and contract qualification.",
+      },
+      { property: "og:title", content: "Sentinel DTrader" },
+      {
+        property: "og:description",
+        content:
+          "Live execution and market intelligence cockpit for Deriv synthetic and volatility indices featuring real-time digit intelligence, market dossiers, and contract qualification.",
+      },
       { name: "author", content: "Sentinel" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
@@ -103,6 +115,7 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" className="dark">
       <head>
+        <title>Sentinel DTrader</title>
         <HeadContent />
       </head>
       <body>
