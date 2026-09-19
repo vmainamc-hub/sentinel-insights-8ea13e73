@@ -20,7 +20,96 @@ export function DigitIntelligencePanel() {
   const { snapshot, window, setWindow, selectedDigit, setSelectedDigit } = useCockpit();
 
   const winStats = snapshot?.windowStats[window];
-  const digits: DigitStat[] = snapshot?.digitStats ?? [];
+
+  // Color-coded classification according to user specifications
+  const classifiedDigits = useMemo(() => {
+    const digits: DigitStat[] = snapshot?.digitStats ?? [];
+    if (!digits.length) return [];
+    const sortedByFreq = [...digits].sort((a, b) => {
+      if (b.pct !== a.pct) return b.pct - a.pct;
+      return b.count - a.count;
+    });
+
+    const mostDigit = sortedByFreq[0]?.digit;
+    const secondMostDigit = sortedByFreq[1]?.digit;
+    const leastDigit = sortedByFreq[sortedByFreq.length - 1]?.digit;
+    const secondLeastDigit = sortedByFreq[sortedByFreq.length - 2]?.digit;
+
+    const sortedByMom = [...digits].sort((a, b) => b.momentum - a.momentum);
+    let mostIncDigit = sortedByMom[0]?.digit;
+    if (mostIncDigit === mostDigit || mostIncDigit === secondMostDigit) {
+      const alt = sortedByMom.find(
+        (d) => d.digit !== mostDigit && d.digit !== secondMostDigit && d.digit !== leastDigit,
+      );
+      if (alt && alt.momentum > 0) {
+        mostIncDigit = alt.digit;
+      }
+    }
+
+    return digits.map((d) => {
+      let role: "most" | "second_most" | "most_increasing" | "second_least" | "least" | "neutral" =
+        "neutral";
+      let color: string | null = null;
+      let label = "";
+      let badgeClass = "";
+      let barClass = "bg-muted-foreground/20";
+      let cardBorder = "border-border/60 hover:border-border";
+      let cardBg = "bg-surface-2/40";
+
+      if (d.digit === mostDigit) {
+        role = "most";
+        color = "#22c55e"; // Green
+        label = "1ST MOST";
+        badgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/50";
+        barClass = "bg-emerald-500";
+        cardBorder = "border-emerald-500/60 shadow-xs";
+        cardBg = "bg-emerald-950/20";
+      } else if (d.digit === secondMostDigit) {
+        role = "second_most";
+        color = "#84cc16"; // Almost green (Lime)
+        label = "2ND MOST";
+        badgeClass = "bg-lime-500/20 text-lime-400 border-lime-500/50";
+        barClass = "bg-lime-500";
+        cardBorder = "border-lime-500/60 shadow-xs";
+        cardBg = "bg-lime-950/20";
+      } else if (d.digit === mostIncDigit) {
+        role = "most_increasing";
+        color = "#a855f7"; // Purple
+        label = "MOST INC";
+        badgeClass = "bg-purple-500/20 text-purple-400 border-purple-500/50";
+        barClass = "bg-purple-500";
+        cardBorder = "border-purple-500/60 shadow-xs";
+        cardBg = "bg-purple-950/20";
+      } else if (d.digit === secondLeastDigit) {
+        role = "second_least";
+        color = "#f97316"; // Orange
+        label = "2ND LEAST";
+        badgeClass = "bg-orange-500/20 text-orange-400 border-orange-500/50";
+        barClass = "bg-orange-500";
+        cardBorder = "border-orange-500/60 shadow-xs";
+        cardBg = "bg-orange-950/20";
+      } else if (d.digit === leastDigit) {
+        role = "least";
+        color = "#ef4444"; // Red
+        label = "LEAST";
+        badgeClass = "bg-rose-500/20 text-rose-400 border-rose-500/50";
+        barClass = "bg-rose-500";
+        cardBorder = "border-rose-500/60 shadow-xs";
+        cardBg = "bg-rose-950/20";
+      }
+
+      return {
+        ...d,
+        role,
+        color,
+        label,
+        badgeClass,
+        barClass,
+        cardBorder,
+        cardBg,
+      };
+    });
+  }, [snapshot?.digitStats]);
 
   return (
     <div className="bg-surface border border-border rounded-lg p-3 space-y-3 select-none">
@@ -189,12 +278,39 @@ export function DigitIntelligencePanel() {
         </div>
       )}
 
+      {/* Color Classification Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-1.5 px-3 py-2 rounded-lg bg-surface-2/80 border border-border text-[11px] font-mono">
+        <span className="text-muted-foreground uppercase text-[10px] font-semibold tracking-wider">
+          Classification Key:
+        </span>
+        <div className="flex flex-wrap items-center gap-3 text-[10px]">
+          <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-xs" />
+            Most Appearing (Green)
+          </span>
+          <span className="flex items-center gap-1.5 text-lime-400 font-bold">
+            <span className="w-2.5 h-2.5 rounded-full bg-lime-500 shadow-xs" />
+            2nd Most (Almost Green)
+          </span>
+          <span className="flex items-center gap-1.5 text-purple-400 font-bold">
+            <span className="w-2.5 h-2.5 rounded-full bg-purple-500 shadow-xs" />
+            Most Increasing (Purple)
+          </span>
+          <span className="flex items-center gap-1.5 text-orange-400 font-bold">
+            <span className="w-2.5 h-2.5 rounded-full bg-orange-500 shadow-xs" />
+            2nd Least (Orange)
+          </span>
+          <span className="flex items-center gap-1.5 text-rose-400 font-bold">
+            <span className="w-2.5 h-2.5 rounded-full bg-rose-500 shadow-xs" />
+            Least (Red)
+          </span>
+        </div>
+      </div>
+
       {/* The 10 Digits Grid (0–9) */}
       <div className="grid grid-cols-2 sm:grid-cols-5 lg:grid-cols-10 gap-2">
-        {digits.map((d) => {
+        {classifiedDigits.map((d) => {
           const isSelected = selectedDigit === d.digit;
-          const isHot = d.status === "HOT";
-          const isCold = d.status === "COLD";
           const isRecent = d.lastSeen === 0;
 
           const pctVal = d.pct * 100;
@@ -208,41 +324,53 @@ export function DigitIntelligencePanel() {
               className={`relative p-2 rounded-lg border transition-all cursor-pointer flex flex-col justify-between select-none ${
                 isSelected
                   ? "bg-surface-3 border-primary shadow-glow-primary scale-[1.02] z-10"
-                  : isHot
-                    ? "bg-surface-2/90 border-rose-500/30 hover:border-rose-500/60"
-                    : isCold
-                      ? "bg-surface-2/90 border-cyan-500/30 hover:border-cyan-500/60"
-                      : "bg-surface-2/60 border-border/80 hover:bg-surface-2 hover:border-border"
+                  : `${d.cardBg} ${d.cardBorder}`
               }`}
             >
               {/* Digit and Tag header */}
               <div className="flex items-start justify-between">
-                <span className="font-mono font-black text-xl text-foreground leading-none">
+                {/* Fully circled with respective colour for labeled digits; totally plain for the rest */}
+                <div
+                  className={`w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center font-mono font-black text-sm sm:text-base transition-all ${
+                    d.role !== "neutral" && d.color
+                      ? "border-2 shadow-xs"
+                      : "border border-border/70 bg-surface-2/60 text-muted-foreground"
+                  }`}
+                  style={
+                    d.role !== "neutral" && d.color
+                      ? {
+                          borderColor: d.color,
+                          backgroundColor: `${d.color}15`,
+                          color: d.color,
+                        }
+                      : undefined
+                  }
+                >
                   {d.digit}
-                </span>
+                </div>
 
-                <div className="flex items-center gap-0.5">
-                  {d.pressure === "up" ? (
-                    <ArrowUp className="w-3 h-3 text-emerald-400" />
-                  ) : d.pressure === "down" ? (
-                    <ArrowDown className="w-3 h-3 text-rose-400" />
-                  ) : (
-                    <Minus className="w-3 h-3 text-muted-foreground" />
-                  )}
+                <div className="flex flex-col items-end gap-1">
+                  <div className="flex items-center gap-0.5">
+                    {d.pressure === "up" ? (
+                      <ArrowUp className="w-3 h-3 text-emerald-400" />
+                    ) : d.pressure === "down" ? (
+                      <ArrowDown className="w-3 h-3 text-rose-400" />
+                    ) : (
+                      <Minus className="w-3 h-3 text-muted-foreground" />
+                    )}
 
-                  {isHot && (
-                    <span className="px-1 py-0.2 rounded bg-rose-500/20 text-rose-400 text-[9px] font-mono font-bold">
-                      HOT
-                    </span>
-                  )}
-                  {isCold && (
-                    <span className="px-1 py-0.2 rounded bg-cyan-500/20 text-cyan-400 text-[9px] font-mono font-bold">
-                      COLD
-                    </span>
-                  )}
-                  {isRecent && (
-                    <span className="px-1 py-0.2 rounded bg-primary/20 text-primary text-[9px] font-mono font-bold">
-                      NOW
+                    {isRecent && (
+                      <span className="px-1 py-0.2 rounded bg-primary/20 text-primary text-[8px] font-mono font-bold">
+                        NOW
+                      </span>
+                    )}
+                  </div>
+
+                  {d.label && (
+                    <span
+                      className={`px-1 py-0.2 rounded text-[8px] font-mono font-bold uppercase border leading-tight ${d.badgeClass}`}
+                    >
+                      {d.label}
                     </span>
                   )}
                 </div>
@@ -250,7 +378,14 @@ export function DigitIntelligencePanel() {
 
               {/* Frequency % & Count */}
               <div className="mt-2 font-mono">
-                <div className="text-sm font-bold text-foreground tracking-tight">
+                <div
+                  className={`text-sm tracking-tight ${
+                    d.role !== "neutral" && d.color
+                      ? "font-bold"
+                      : "font-medium text-muted-foreground/80"
+                  }`}
+                  style={d.role !== "neutral" && d.color ? { color: d.color } : undefined}
+                >
                   {fmtPct(d.pct)}
                 </div>
                 <div className="text-[10px] text-muted-foreground flex items-center justify-between">
@@ -268,23 +403,23 @@ export function DigitIntelligencePanel() {
                     title="10% uniform expected baseline"
                   />
 
-                  {/* Actual frequency bar */}
+                  {/* Actual frequency bar in role color */}
                   <div
-                    className={`w-full rounded-sm transition-all duration-300 ${
-                      isHot
-                        ? "bg-rose-500"
-                        : isCold
-                          ? "bg-cyan-500"
-                          : pctVal >= 10
-                            ? "bg-primary"
-                            : "bg-muted-foreground/60"
-                    }`}
+                    className={`w-full rounded-sm transition-all duration-300 ${d.barClass}`}
                     style={{ height: `${barHeightPct}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between text-[9px] font-mono text-muted-foreground mt-1">
                   <span>Run: {d.run > 0 ? `${d.run}x` : "-"}</span>
-                  <span className={d.momentum >= 0 ? "text-emerald-400" : "text-rose-400"}>
+                  <span
+                    className={
+                      d.role === "most_increasing"
+                        ? "text-purple-400 font-bold"
+                        : d.momentum >= 0
+                          ? "text-emerald-400"
+                          : "text-rose-400"
+                    }
+                  >
                     {fmtSigned(d.momentum * 100, 1)}%
                   </span>
                 </div>

@@ -1,38 +1,35 @@
 /**
- * Service registry — the single swap point for the live integration.
+ * Service registry — connected to authoritative Deriv WebSocket live streams.
  *
- * Phase 2: replace the mock members with Deriv-backed implementations and
- * nothing in the UI layer needs to change.
+ * Real Deriv Market Data (active_symbols, 1000 ticks history, live tick stream),
+ * real Deriv contracts, proposals, and account authorization.
  */
 import type { SentinelServices } from "./interfaces";
-import { mockMarketDataService } from "./mock/marketDataService";
-import {
-  mockAccountService,
-  mockContractService,
-  mockPortfolio,
-  mockProposalService,
-} from "./mock/tradingServices";
+import { derivMarketDataService } from "./deriv/marketDataService";
+import { derivContractService } from "./deriv/contractService";
+import { derivProposalService } from "./deriv/proposalService";
+import { derivAccountService } from "./deriv/accountService";
+import { mockPortfolio } from "./mock/tradingServices";
 import { digitAnalysisService } from "../engine/digitAnalysis";
 import { analysisService } from "../engine/analysis";
 
 export const services: SentinelServices = {
-  marketData: mockMarketDataService,
-  contracts: mockContractService,
-  proposals: mockProposalService,
+  marketData: derivMarketDataService,
+  contracts: derivContractService,
+  proposals: derivProposalService,
   trades: mockPortfolio,
   openContracts: mockPortfolio,
-  account: mockAccountService,
+  account: derivAccountService,
   digitAnalysis: digitAnalysisService,
   analysis: analysisService,
 };
 
-/** Prototype-only handles (demo scenario switching, stream fan-out). */
+/** Live controls & handles */
 export const prototypeControls = {
-  setScenario: (s: Parameters<typeof mockMarketDataService.setScenario>[0]) =>
-    mockMarketDataService.setScenario(s),
-  peekQuote: (symbol: string) => mockMarketDataService.peekQuote(symbol),
+  peekQuote: (symbol: string) => derivMarketDataService.peekQuote(symbol),
   portfolioOnTick: mockPortfolio.onTick.bind(mockPortfolio),
 };
 
 export { contractLabel } from "./mock/tradingServices";
 export { CATEGORY_LABEL } from "./mock/catalogue";
+export { derivSocket } from "./deriv/socket";

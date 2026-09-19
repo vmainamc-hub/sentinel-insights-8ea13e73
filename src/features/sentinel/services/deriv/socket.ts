@@ -37,12 +37,39 @@ class DerivSocket {
   private pending = new Map<number, Pending>();
   private subs = new Map<number, Sub>();
   private statusListeners = new Set<(s: SocketStatus) => void>();
+  private accountListeners = new Set<(acc: Record<string, unknown> | null) => void>();
   private retry = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private keepAlive: ReturnType<typeof setInterval> | null = null;
+  private token: string | null = null;
+  private authorizedAccount: Record<string, unknown> | null = null;
+  private latencyMs = 0;
+
+  constructor() {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("deriv_api_token");
+        if (saved) this.token = saved.trim();
+      } catch {
+        // localStorage not available
+      }
+    }
+  }
 
   getStatus() {
     return this.status;
+  }
+
+  getLatency() {
+    return this.latencyMs;
+  }
+
+  getAuthorizedAccount(): Record<string, unknown> | null {
+    return this.authorizedAccount;
+  }
+
+  getToken() {
+    return this.token;
   }
 
   onStatus(fn: (s: SocketStatus) => void) {
@@ -51,10 +78,53 @@ class DerivSocket {
     return () => this.statusListeners.delete(fn);
   }
 
+  onAccount(fn: (acc: Record<string, unknown> | null) => void) {
+    this.accountListeners.add(fn);
+    fn(this.authorizedAccount);
+    return () => this.accountListeners.delete(fn);
+  }
+
   private setStatus(s: SocketStatus) {
     if (this.status === s) return;
     this.status = s;
     this.statusListeners.forEach((fn) => fn(s));
+  }
+
+  async setToken(token: string | null): Promise<Record<string, unknown> | null> {
+    this.token = token ? token.trim() : null;
+    if (typeof window !== "undefined") {
+      try {
+        if (this.token) localStorage.setItem("deriv_api_token", this.token);
+        else localStorage.removeItem("deriv_api_token");
+      } catch {
+        // localStorage not available
+      }
+    }
+    if (!this.token) {
+      this.authorizedAccount = null;
+      this.accountListeners.forEach((fn) => fn(null));
+      return null;
+    }
+    return this.authorizeCurrentToken();
+  }
+
+  private async authorizeCurrentToken(): Promise<Record<string, unknown> | null> {
+    if (!this.token) return null;
+    try {
+      const res = await this.send({ authorize: this.token });
+      const auth = (res["authorize"] as Record<string, unknown>) ?? null;
+      if (auth) {
+        this.authorizedAccount = auth;
+        this.accountListeners.forEach((fn) => fn(auth));
+        return auth;
+      }
+    } catch (e) {
+      console.warn("Deriv authorization failed:", e);
+      this.authorizedAccount = null;
+      this.accountListeners.forEach((fn) => fn(null));
+      throw e;
+    }
+    return null;
   }
 
   private connect() {
@@ -64,9 +134,12 @@ class DerivSocket {
     const ws = new WebSocket(ENDPOINT);
     this.ws = ws;
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
       this.retry = 0;
       this.setStatus("OPEN");
+      if (this.token) {
+        this.authorizeCurrentToken().catch(() => {});
+      }
       this.queue.forEach((m) => ws.send(m));
       this.queue = [];
       // re-issue every active subscription on a fresh socket
@@ -75,7 +148,14 @@ class DerivSocket {
         ws.send(JSON.stringify({ ...sub.request, subscribe: 1, req_id: id }));
       });
       this.keepAlive = setInterval(() => {
-        if (ws.readyState === 1) ws.send(JSON.stringify({ ping: 1 }));
+        if (ws.readyState === 1) {
+          const start = performance.now();
+          this.send({ ping: 1 }, 5000)
+            .then(() => {
+              this.latencyMs = Math.round(performance.now() - start);
+            })
+            .catch(() => {});
+        }
       }, 20_000);
     };
 

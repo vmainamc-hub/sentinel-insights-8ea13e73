@@ -37,6 +37,60 @@ export function DigitInspectorModal() {
 
   if (!intel || !stat) return null;
 
+  // Determine role classification
+  const digits = snapshot.digitStats;
+  const sortedByFreq = [...digits].sort((a, b) => {
+    if (b.pct !== a.pct) return b.pct - a.pct;
+    return b.count - a.count;
+  });
+  const mostDigit = sortedByFreq[0]?.digit;
+  const secondMostDigit = sortedByFreq[1]?.digit;
+  const leastDigit = sortedByFreq[sortedByFreq.length - 1]?.digit;
+  const secondLeastDigit = sortedByFreq[sortedByFreq.length - 2]?.digit;
+
+  const sortedByMom = [...digits].sort((a, b) => b.momentum - a.momentum);
+  let mostIncDigit = sortedByMom[0]?.digit;
+  if (mostIncDigit === mostDigit || mostIncDigit === secondMostDigit) {
+    const alt = sortedByMom.find(
+      (d) => d.digit !== mostDigit && d.digit !== secondMostDigit && d.digit !== leastDigit,
+    );
+    if (alt && alt.momentum > 0) {
+      mostIncDigit = alt.digit;
+    }
+  }
+
+  let roleLabel = "";
+  let roleColor = "";
+  let roleBadgeClass = "";
+  let avatarBg = "bg-surface-2 border-border/80 text-muted-foreground";
+
+  if (selectedDigit === mostDigit) {
+    roleLabel = "Most Appearing (Green)";
+    roleColor = "#22c55e";
+    roleBadgeClass = "bg-emerald-500/20 text-emerald-400 border-emerald-500/50";
+    avatarBg = "bg-emerald-500/20 border-emerald-500 text-emerald-400";
+  } else if (selectedDigit === secondMostDigit) {
+    roleLabel = "2nd Most (Almost Green)";
+    roleColor = "#84cc16";
+    roleBadgeClass = "bg-lime-500/20 text-lime-400 border-lime-500/50";
+    avatarBg = "bg-lime-500/20 border-lime-500 text-lime-400";
+  } else if (selectedDigit === mostIncDigit) {
+    roleLabel = "Most Increasing (Purple)";
+    roleColor = "#a855f7";
+    roleBadgeClass = "bg-purple-500/20 text-purple-400 border-purple-500/50";
+    avatarBg = "bg-purple-500/20 border-purple-500 text-purple-400";
+  } else if (selectedDigit === secondLeastDigit) {
+    roleLabel = "2nd Least (Orange)";
+    roleColor = "#f97316";
+    roleBadgeClass = "bg-orange-500/20 text-orange-400 border-orange-500/50";
+    avatarBg = "bg-orange-500/20 border-orange-500 text-orange-400";
+  } else if (selectedDigit === leastDigit) {
+    roleLabel = "Least (Red)";
+    roleColor = "#ef4444";
+    roleBadgeClass = "bg-rose-500/20 text-rose-400 border-rose-500/50";
+    avatarBg = "bg-rose-500/20 border-rose-500 text-rose-400";
+  }
+
   const handleSelectMatches = () => {
     selectContractType("DIGITMATCH");
     updateConfig({ contractType: "DIGITMATCH", barrier: selectedDigit });
@@ -70,12 +124,21 @@ export function DigitInspectorModal() {
         <DialogHeader className="p-4 border-b border-border bg-surface-2/60">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-primary/20 border border-primary/40 flex items-center justify-center font-mono font-black text-xl text-primary shadow-glow-primary">
+              <div
+                className={`w-10 h-10 rounded-full border-2 flex items-center justify-center font-mono font-black text-xl shadow-sm ${avatarBg}`}
+              >
                 {selectedDigit}
               </div>
               <div>
                 <DialogTitle className="text-base font-semibold text-foreground flex items-center gap-2">
                   <span>Digit {selectedDigit} Intelligence</span>
+                  {roleLabel && (
+                    <span
+                      className={`text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded border ${roleBadgeClass}`}
+                    >
+                      {roleLabel}
+                    </span>
+                  )}
                   <Badge variant="outline" className="text-[10px] font-mono uppercase">
                     {stat.status}
                   </Badge>

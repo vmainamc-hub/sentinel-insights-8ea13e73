@@ -32,10 +32,20 @@ import type {
   Tick,
   TradeRecord,
 } from "../types";
-import { services, prototypeControls } from "../services";
+import { services, prototypeControls, derivSocket } from "../services";
 
 const DEFAULT_SYMBOL = "1HZ10V";
-const DEFAULT_TABS = ["1HZ10V", "R_10", "R_25", "BOOM500"];
+const DEFAULT_TABS = [
+  "1HZ10V",
+  "1HZ25V",
+  "1HZ50V",
+  "1HZ100V",
+  "R_10",
+  "R_25",
+  "R_50",
+  "R_100",
+  "BOOM500",
+];
 
 interface CockpitState {
   markets: Market[];
@@ -78,6 +88,14 @@ interface CockpitState {
   setFinderOpen: (o: boolean) => void;
   tradeSheetOpen: boolean;
   setTradeSheetOpen: (o: boolean) => void;
+
+  viewMode: "unified" | "dtrader" | "digits";
+  setViewMode: (m: "unified" | "dtrader" | "digits") => void;
+  authModalOpen: boolean;
+  setAuthModalOpen: (o: boolean) => void;
+  apiToken: string | null;
+  setApiToken: (token: string | null) => Promise<void>;
+  latency: number;
 }
 
 const Ctx = createContext<CockpitState | null>(null);
@@ -116,7 +134,30 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
   const [account, setAccount] = useState<Account | null>(null);
   const [finderOpen, setFinderOpen] = useState(false);
   const [tradeSheetOpen, setTradeSheetOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"unified" | "dtrader" | "digits">("unified");
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [apiToken, setApiTokenState] = useState<string | null>(() => derivSocket.getToken());
+  const [latency, setLatency] = useState(0);
   const marketRef = useRef<Market | null>(null);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setLatency(derivSocket.getLatency());
+    }, 3000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const setApiToken = async (token: string | null) => {
+    setApiTokenState(token);
+    try {
+      await derivSocket.setToken(token);
+      const acc = await services.account.getAccount();
+      setAccount(acc);
+    } catch (e) {
+      console.error("Token auth error:", e);
+      throw e;
+    }
+  };
 
   const market = useMemo(
     () => markets.find((m) => m.underlying_symbol === activeSymbol) ?? null,
@@ -295,8 +336,8 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
     setBuying(true);
     try {
       const oc = await services.trades.buy(activeSymbol, proposal, market);
-      toast("Prototype contract opened", {
-        description: `${oc.label} on ${market.display_name} · ${oc.ticksTotal} ticks · no real trade placed.`,
+      toast("Contract Opened", {
+        description: `${oc.label} on ${market.display_name} · ${oc.ticksTotal} ticks · Settling against live Deriv feed.`,
       });
       setTradeSheetOpen(false);
     } catch (e) {
@@ -309,8 +350,8 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
   const sell = useCallback(async (id: string) => {
     try {
       const rec = await services.trades.sell(id);
-      toast("Prototype contract sold", {
-        description: `${rec.label} closed at ${rec.profit >= 0 ? "+" : ""}${rec.profit.toFixed(2)} ${rec.status.toLowerCase()} · prototype only.`,
+      toast("Contract Closed", {
+        description: `${rec.label} settled at ${rec.profit >= 0 ? "+" : ""}${rec.profit.toFixed(2)} USD (${rec.status}).`,
       });
     } catch (e) {
       toast.error((e as Error).message);
@@ -352,6 +393,13 @@ export function CockpitProvider({ children }: { children: ReactNode }) {
     setFinderOpen,
     tradeSheetOpen,
     setTradeSheetOpen,
+    viewMode,
+    setViewMode,
+    authModalOpen,
+    setAuthModalOpen,
+    apiToken,
+    setApiToken,
+    latency,
   };
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

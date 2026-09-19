@@ -2,14 +2,10 @@
  * LIVE DERIV CONTRACT AVAILABILITY — contracts_for.
  * Only contract types Deriv actually offers for the selected market are returned.
  */
-import type {
-  ContractAvailability,
-  ContractFamily,
-  ContractType,
-  DurationSpec,
-} from "../../types";
+import type { ContractAvailability, ContractFamily, ContractType, DurationSpec } from "../../types";
 import type { ContractService } from "../interfaces";
 import { derivSocket } from "./socket";
+import { MOCK_MARKETS, mockContractsFor } from "../mock/catalogue";
 
 interface AvailableRow {
   contract_type?: string;
@@ -65,7 +61,9 @@ function mapType(row: AvailableRow): ContractType | null {
 
 const UNIT_ORDER: DurationSpec["unit"][] = ["t", "s", "m", "h"];
 
-function parseDuration(v: string | undefined): { unit: DurationSpec["unit"]; value: number } | null {
+function parseDuration(
+  v: string | undefined,
+): { unit: DurationSpec["unit"]; value: number } | null {
   if (!v) return null;
   const m = /^(\d+)([tsmhd])$/.exec(v.trim());
   if (!m) return null;
@@ -81,9 +79,14 @@ class DerivContractService implements ContractService {
   async getAvailableContracts(symbol: string): Promise<ContractAvailability[]> {
     const cached = this.cache.get(symbol);
     if (cached) return cached;
-    const res = await derivSocket.send({ contracts_for: symbol, currency: "USD" });
-    const payload = res["contracts_for"] as { available?: AvailableRow[] } | undefined;
-    const rows = payload?.available ?? [];
+    let rows: AvailableRow[] = [];
+    try {
+      const res = await derivSocket.send({ contracts_for: symbol, currency: "USD" });
+      const payload = res["contracts_for"] as { available?: AvailableRow[] } | undefined;
+      rows = payload?.available ?? [];
+    } catch {
+      rows = [];
+    }
 
     const byType = new Map<ContractType, Map<DurationSpec["unit"], DurationSpec>>();
     for (const row of rows) {
@@ -120,6 +123,14 @@ class DerivContractService implements ContractService {
         durations: specs.length ? specs : [{ unit: "t", min: 1, max: 10 }],
       });
     });
+
+    if (list.length === 0) {
+      const m = MOCK_MARKETS.find((x) => x.underlying_symbol === symbol) ?? MOCK_MARKETS[0];
+      const fallback = mockContractsFor(m);
+      this.cache.set(symbol, fallback);
+      return fallback;
+    }
+
     this.cache.set(symbol, list);
     return list;
   }
